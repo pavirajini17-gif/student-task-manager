@@ -16,6 +16,55 @@
     <ul id="taskList"></ul>
 
     <script>
+        let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+
+        function saveTasks() {
+            localStorage.setItem("tasks", JSON.stringify(tasks));
+        }
+
+        function displayTasks() {
+            const taskList = document.getElementById("taskList");
+            taskList.innerHTML = "";
+
+            tasks.forEach(function(task, index) {
+                const li = document.createElement("li");
+
+                const taskText = document.createElement("span");
+                taskText.textContent = task.text;
+
+                if (task.completed) {
+                    taskText.style.textDecoration = "line-through";
+                }
+
+                const completeBtn = document.createElement("button");
+                completeBtn.textContent = task.completed
+                    ? "↩️ Undo"
+                    : "✅ Complete";
+
+                completeBtn.onclick = function() {
+                    tasks[index].completed = !tasks[index].completed;
+                    saveTasks();
+                    displayTasks();
+                };
+
+                const deleteBtn = document.createElement("button");
+                deleteBtn.textContent = "🗑️ Delete";
+
+                deleteBtn.onclick = function() {
+                    tasks.splice(index, 1);
+                    saveTasks();
+                    displayTasks();
+                };
+
+                li.appendChild(taskText);
+                li.appendChild(document.createTextNode(" "));
+                li.appendChild(completeBtn);
+                li.appendChild(deleteBtn);
+
+                taskList.appendChild(li);
+            });
+        }
+
         function addTask() {
             const input = document.getElementById("taskInput");
             const task = input.value.trim();
@@ -25,32 +74,18 @@
                 return;
             }
 
-            const li = document.createElement("li");
-            const taskText = document.createElement("span");
-            taskText.textContent = task;
+            tasks.push({
+                text: task,
+                completed: false
+            });
 
-            const completeBtn = document.createElement("button");
-            completeBtn.textContent = "✅ Complete";
-            completeBtn.onclick = function () {
-                taskText.style.textDecoration =
-                    taskText.style.textDecoration === "line-through"
-                    ? "none" : "line-through";
-            };
+            saveTasks();
+            displayTasks();
 
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "🗑️ Delete";
-            deleteBtn.onclick = function () {
-                li.remove();
-            };
-
-            li.appendChild(taskText);
-            li.appendChild(document.createTextNode(" "));
-            li.appendChild(completeBtn);
-            li.appendChild(deleteBtn);
-
-            document.getElementById("taskList").appendChild(li);
             input.value = "";
         }
+
+        displayTasks();
     </script>
 </body>
 </html>
