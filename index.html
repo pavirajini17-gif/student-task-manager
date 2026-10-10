@@ -6,203 +6,249 @@
     <title>Student Task Manager</title>
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <header>
-        <h1>📚 Student Task Manager</h1>
-        <p>Plan your day. Complete your goals. Celebrate your progress!</p>
-    </header>
 
-    <main class="container">
+<header>
+    <h1>📚 Student Task Manager</h1>
+    <p>Plan your day. Complete your goals!</p>
+    <button id="themeButton" onclick="toggleDarkMode()">🌙 Dark Mode</button>
+</header>
 
-        <section class="dashboard">
-            <div class="card">
-                <h3>Total Tasks</h3>
-                <p id="totalTasks">0</p>
-            </div>
+<main class="container">
 
-            <div class="card">
-                <h3>Completed</h3>
-                <p id="completedTasks">0</p>
-            </div>
+    <section class="dashboard">
+        <div class="card">
+            <h3>Total Tasks</h3>
+            <p id="totalTasks">0</p>
+        </div>
+        <div class="card">
+            <h3>Completed</h3>
+            <p id="completedTasks">0</p>
+        </div>
+        <div class="card">
+            <h3>Pending</h3>
+            <p id="pendingTasks">0</p>
+        </div>
+    </section>
 
-            <div class="card">
-                <h3>Pending</h3>
-                <p id="pendingTasks">0</p>
-            </div>
-        </section>
+    <section class="task-form">
+        <h2>➕ Add a Task</h2>
 
-        <section class="task-form">
-            <h2>➕ Add a New Task</h2>
+        <input type="text" id="taskInput" placeholder="Enter your task">
 
-            <input type="text" id="taskInput" placeholder="What do you need to do?">
+        <label for="dueDate">Due Date:</label>
+        <input type="date" id="dueDate">
 
-            <label for="dueDate">Due date:</label>
-            <input type="date" id="dueDate">
+        <button id="addButton" onclick="addTask()">Add Task</button>
+    </section>
 
-            <button id="addButton" onclick="addTask()">Add Task</button>
-        </section>
+    <section class="task-section">
+        <h2>📋 My Tasks</h2>
 
-        <section class="task-section">
-            <h2>📝 My Tasks</h2>
+        <input type="search" id="searchInput"
+               placeholder="🔍 Search tasks..."
+               oninput="displayTasks()">
 
-            <ul id="taskList"></ul>
+        <div class="filters">
+            <button onclick="setFilter('all')" class="filter-btn">All</button>
+            <button onclick="setFilter('pending')" class="filter-btn">Pending</button>
+            <button onclick="setFilter('completed')" class="filter-btn">Completed</button>
+        </div>
 
-            <p id="emptyMessage">No tasks yet. Add your first task! 🌟</p>
-        </section>
+        <h3>📊 Completion Progress</h3>
+        <div class="progress-container">
+            <div id="progressBar">0%</div>
+        </div>
 
-    </main>
+        <ul id="taskList"></ul>
+        <p id="emptyMessage">No tasks found. Add a task to get started!</p>
+    </section>
 
-    <footer>
-        <p>Made with ❤️ by a BCA Student</p>
-    </footer>
+</main>
 
-    <script>
-        let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-        let editIndex = null;
+<footer>
+    <p>Made with ❤️ by a BCA Student</p>
+</footer>
 
-        function saveTasks() {
-            localStorage.setItem("tasks", JSON.stringify(tasks));
-        }
+<script>
+    let tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    let editIndex = null;
+    let currentFilter = "all";
 
-        function updateDashboard() {
-            const completed = tasks.filter(task => task.completed).length;
+    function saveTasks() {
+        localStorage.setItem("tasks", JSON.stringify(tasks));
+    }
 
-            document.getElementById("totalTasks").textContent = tasks.length;
-            document.getElementById("completedTasks").textContent = completed;
-            document.getElementById("pendingTasks").textContent =
-                tasks.length - completed;
-        }
+    function updateDashboard() {
+        const completed = tasks.filter(task => task.completed).length;
+        const pending = tasks.length - completed;
+        const percentage = tasks.length
+            ? Math.round((completed / tasks.length) * 100)
+            : 0;
 
-        function displayTasks() {
-            const taskList = document.getElementById("taskList");
-            const emptyMessage = document.getElementById("emptyMessage");
+        document.getElementById("totalTasks").textContent = tasks.length;
+        document.getElementById("completedTasks").textContent = completed;
+        document.getElementById("pendingTasks").textContent = pending;
 
-            taskList.innerHTML = "";
+        const progressBar = document.getElementById("progressBar");
+        progressBar.style.width = percentage + "%";
+        progressBar.textContent = percentage + "%";
+    }
 
-            emptyMessage.style.display = tasks.length === 0 ? "block" : "none";
+    function displayTasks() {
+        const list = document.getElementById("taskList");
+        const search = document.getElementById("searchInput")
+            .value.toLowerCase().trim();
 
-            tasks.forEach(function(task, index) {
-                const li = document.createElement("li");
-                li.className = task.completed ? "task-item completed" : "task-item";
+        list.innerHTML = "";
 
-                const details = document.createElement("div");
-                details.className = "task-details";
+        const visibleTasks = tasks
+            .map((task, index) => ({ task, index }))
+            .filter(item => {
+                const matchesSearch =
+                    item.task.text.toLowerCase().includes(search);
 
-                const taskText = document.createElement("span");
-                taskText.className = "task-name";
-                taskText.textContent = task.text;
+                const matchesFilter =
+                    currentFilter === "all" ||
+                    (currentFilter === "pending" && !item.task.completed) ||
+                    (currentFilter === "completed" && item.task.completed);
 
-                const dateText = document.createElement("small");
-                dateText.textContent = task.dueDate
-                    ? "📅 Due: " + task.dueDate
-                    : "📅 No due date";
-
-                details.appendChild(taskText);
-                details.appendChild(dateText);
-
-                const buttons = document.createElement("div");
-                buttons.className = "task-buttons";
-
-                const completeButton = document.createElement("button");
-                completeButton.textContent = task.completed ? "↩️ Undo" : "✅ Complete";
-                completeButton.className = "complete-btn";
-
-                completeButton.onclick = function() {
-                    tasks[index].completed = !tasks[index].completed;
-                    saveTasks();
-                    displayTasks();
-                };
-
-                const editButton = document.createElement("button");
-                editButton.textContent = "✏️ Edit";
-                editButton.className = "edit-btn";
-
-                editButton.onclick = function() {
-                    document.getElementById("taskInput").value = task.text;
-                    document.getElementById("dueDate").value = task.dueDate || "";
-                    document.getElementById("addButton").textContent = "Save Changes";
-                    editIndex = index;
-
-                    document.getElementById("taskInput").focus();
-                    document.querySelector(".task-form").scrollIntoView({
-                        behavior: "smooth"
-                    });
-                };
-
-                const deleteButton = document.createElement("button");
-                deleteButton.textContent = "🗑️ Delete";
-                deleteButton.className = "delete-btn";
-
-                deleteButton.onclick = function() {
-                    tasks.splice(index, 1);
-
-                    if (editIndex === index) {
-                        resetForm();
-                    } else if (editIndex !== null && editIndex > index) {
-                        editIndex--;
-                    }
-
-                    saveTasks();
-                    displayTasks();
-                };
-
-                buttons.appendChild(completeButton);
-                buttons.appendChild(editButton);
-                buttons.appendChild(deleteButton);
-
-                li.appendChild(details);
-                li.appendChild(buttons);
-
-                taskList.appendChild(li);
+                return matchesSearch && matchesFilter;
             });
 
-            updateDashboard();
-        }
+        document.getElementById("emptyMessage").style.display =
+            visibleTasks.length === 0 ? "block" : "none";
 
-        function addTask() {
-            const input = document.getElementById("taskInput");
-            const dateInput = document.getElementById("dueDate");
-            const text = input.value.trim();
-            const dueDate = dateInput.value;
+        visibleTasks.forEach(({ task, index }) => {
+            const li = document.createElement("li");
+            li.className = task.completed ? "task-item completed" : "task-item";
 
-            if (text === "") {
-                alert("Please enter a task!");
-                input.focus();
-                return;
-            }
+            const details = document.createElement("div");
+            details.className = "task-details";
 
-            if (editIndex !== null) {
-                tasks[editIndex].text = text;
-                tasks[editIndex].dueDate = dueDate;
-                editIndex = null;
-            } else {
-                tasks.push({
-                    text: text,
-                    dueDate: dueDate,
-                    completed: false
+            const name = document.createElement("span");
+            name.className = "task-name";
+            name.textContent = task.text;
+
+            const date = document.createElement("small");
+            date.textContent = task.dueDate
+                ? "📅 Due: " + task.dueDate
+                : "📅 No due date";
+
+            details.append(name, date);
+
+            const buttons = document.createElement("div");
+            buttons.className = "task-buttons";
+
+            const complete = document.createElement("button");
+            complete.textContent = task.completed ? "↩️ Undo" : "✅ Complete";
+            complete.className = "complete-btn";
+            complete.onclick = () => {
+                tasks[index].completed = !tasks[index].completed;
+                saveTasks();
+                displayTasks();
+            };
+
+            const edit = document.createElement("button");
+            edit.textContent = "✏️ Edit";
+            edit.className = "edit-btn";
+            edit.onclick = () => {
+                document.getElementById("taskInput").value = task.text;
+                document.getElementById("dueDate").value = task.dueDate || "";
+                document.getElementById("addButton").textContent = "Save Changes";
+                editIndex = index;
+                document.getElementById("taskInput").focus();
+                document.querySelector(".task-form").scrollIntoView({
+                    behavior: "smooth"
                 });
-            }
+            };
 
-            saveTasks();
-            resetForm();
-            displayTasks();
-        }
+            const del = document.createElement("button");
+            del.textContent = "🗑️ Delete";
+            del.className = "delete-btn";
+            del.onclick = () => {
+                tasks.splice(index, 1);
 
-        function resetForm() {
-            document.getElementById("taskInput").value = "";
-            document.getElementById("dueDate").value = "";
-            document.getElementById("addButton").textContent = "Add Task";
-            editIndex = null;
-        }
+                if (editIndex === index) {
+                    resetForm();
+                } else if (editIndex !== null && editIndex > index) {
+                    editIndex--;
+                }
 
-        document.getElementById("taskInput").addEventListener("keydown", function(event) {
-            if (event.key === "Enter") {
-                addTask();
-            }
+                saveTasks();
+                displayTasks();
+            };
+
+            buttons.append(complete, edit, del);
+            li.append(details, buttons);
+            list.appendChild(li);
         });
 
+        updateDashboard();
+    }
+
+    function addTask() {
+        const input = document.getElementById("taskInput");
+        const date = document.getElementById("dueDate");
+        const text = input.value.trim();
+
+        if (!text) {
+            alert("Please enter a task!");
+            input.focus();
+            return;
+        }
+
+        if (editIndex !== null) {
+            tasks[editIndex].text = text;
+            tasks[editIndex].dueDate = date.value;
+            editIndex = null;
+        } else {
+            tasks.push({
+                text: text,
+                dueDate: date.value,
+                completed: false
+            });
+        }
+
+        saveTasks();
+        resetForm();
         displayTasks();
-    </script>
+    }
+
+    function resetForm() {
+        document.getElementById("taskInput").value = "";
+        document.getElementById("dueDate").value = "";
+        document.getElementById("addButton").textContent = "Add Task";
+        editIndex = null;
+    }
+
+    function setFilter(filter) {
+        currentFilter = filter;
+        displayTasks();
+    }
+
+    function toggleDarkMode() {
+        document.body.classList.toggle("dark-mode");
+
+        const isDark = document.body.classList.contains("dark-mode");
+
+        localStorage.setItem("darkMode", isDark);
+
+        document.getElementById("themeButton").textContent =
+            isDark ? "☀️ Light Mode" : "🌙 Dark Mode";
+    }
+
+    if (localStorage.getItem("darkMode") === "true") {
+        document.body.classList.add("dark-mode");
+        document.getElementById("themeButton").textContent = "☀️ Light Mode";
+    }
+
+    document.getElementById("taskInput").addEventListener("keydown", event => {
+        if (event.key === "Enter") addTask();
+    });
+
+    displayTasks();
+</script>
+
 </body>
 </html>
